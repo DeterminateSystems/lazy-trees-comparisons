@@ -58,6 +58,9 @@ jobs:
 
       - name: Evaluate ${{ env.PKG }} without lazy trees
         run: |
+          # Remove temporary Nix store
+          sudo rm -rf ./tmp
+
           # Disable lazy trees
           echo "lazy-trees = false" | sudo tee -a /etc/nix/nix.custom.conf
 
@@ -75,8 +78,10 @@ jobs:
 
       - name: Make trivial change and evaluate ${{ env.PKG }} without lazy trees again
         run: |
+          # Remove temporary Nix store
           sudo rm -rf ./tmp
 
+          # Meaningless change
           echo "" >> flake.nix
 
           time nix eval \
