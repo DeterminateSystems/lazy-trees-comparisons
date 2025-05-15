@@ -9,6 +9,7 @@ on:
 jobs:
   run-comparison:
     runs-on: ${{ matrix.examples.runner }}
+    name: Evaluate the ${{ matrix.examples.package }} package on ${{ matrix.examples.runner }}
     permissions:
       id-token: write
       contents: read
