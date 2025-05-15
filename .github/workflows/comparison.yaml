@@ -38,9 +38,7 @@ jobs:
           ref: 2f2c8b33a3dc4bf9a3db1648d734fa8c64f9166b
 
       - name: Install Determinate Nix
-        uses: DeterminateSystems/nix-installer-action@v17
-        with:
-          determinate: true
+        uses: DeterminateSystems/determinate-nix-action@v3.5.2
 
       - name: Evaluate ${{ env.PKG }} without lazy trees
         run: |
