@@ -47,7 +47,7 @@ jobs:
       - name: Evaluate ${{ env.PKG }} without lazy trees
         run: |
           hyperfine \
-            --export-json lazy-trees-disabled.json \
+            --export-json lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
             --cleanup 'sudo rm -rf ./tmp' \
             'nix eval --quiet --no-eval-cache --store ./tmp .#${{ env.PKG }}'
@@ -55,7 +55,13 @@ jobs:
           # Generate a ./tmp
           nix eval --quiet --no-eval-cache --store ./tmp .#${{ env.PKG }}
 
-          cat lazy-trees-disabled.json | jq .
+          cat lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json | jq .
+
+      - name: Upload JSON results for lazy trees disabled
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
+          path: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
       - name: Display disk usage without lazy trees
         run: |
@@ -71,7 +77,7 @@ jobs:
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
 
           hyperfine \
-            --export-json lazy-trees-enabled.json \
+            --export-json lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
             --cleanup 'sudo rm -rf ./tmp' \
             'nix eval --quiet --no-eval-cache --store ./tmp .#${{ env.PKG }}'
@@ -79,7 +85,13 @@ jobs:
           # Generate a ./tmp
           nix eval --quiet --no-eval-cache --store ./tmp .#${{ env.PKG }}
 
-          cat lazy-trees-enabled.json | jq .
+          cat lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json | jq .
+
+      - name: Upload JSON results for lazy trees enabled
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
+          path: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
       - name: Display disk usage with lazy trees
         run: |
