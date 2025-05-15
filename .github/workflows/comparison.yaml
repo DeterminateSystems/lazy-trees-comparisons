@@ -1,0 +1,40 @@
+name: Lazy trees performance comparison
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  run-comparison:
+    runs-on: ${{ matrix.runners }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      matrix:
+        runners:
+          - ubuntu-latest
+          - macos-latest
+    steps:
+      - name: Fetch Nixpkgs
+        uses: actions/checkout@v4
+        with:
+          repository: NixOS/nixpkgs
+          ref: 2f2c8b33a3dc4bf9a3db1648d734fa8c64f9166b
+
+      - name: Install Determinate Nix
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+
+      - name: Evaluate cowsay without lazy trees
+        run: |
+          time nix eval .#cowsay
+
+      - name: Evaluate cowsay with lazy trees
+        run: |
+          sudo touch /etc/nix/nix.custom.conf
+          echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
+
+          time nix eval .#cowsay
