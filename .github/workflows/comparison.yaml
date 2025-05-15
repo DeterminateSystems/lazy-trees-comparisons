@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  run-comparison:
+  run-comparisons:
     runs-on: ${{ matrix.examples.runner }}
     name: Evaluate the ${{ matrix.examples.package }} package on ${{ matrix.examples.runner }}
     permissions:
@@ -60,8 +60,8 @@ jobs:
       - name: Upload JSON results for lazy trees disabled
         uses: actions/upload-artifact@v4
         with:
-          name: results-lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
-          path: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
+          name: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
+          path: results/lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
       - name: Display disk usage without lazy trees
         run: |
@@ -90,8 +90,8 @@ jobs:
       - name: Upload JSON results for lazy trees enabled
         uses: actions/upload-artifact@v4
         with:
-          name: results-lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
-          path: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
+          name: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
+          path: results/lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
       - name: Display disk usage with lazy trees
         run: |
@@ -99,3 +99,19 @@ jobs:
 
           # Remove temporary Nix store
           sudo rm -rf ./tmp
+
+  collect-results:
+    runs-on: ubuntu-latest
+    name: Display comparison results
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: results
+
+      - name: List artifacts
+        run: |
+          ls ./results
