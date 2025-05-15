@@ -26,8 +26,8 @@ jobs:
           - { runner: macos-latest, package: stdenv }
           - { runner: ubuntu-latest, package: nodePackages }
           - { runner: macos-latest, package: nodePackages }
-          - { runner: ubuntu-latest, package: perlPackages }
-          - { runner: macos-latest, package: perlPackages }
+          - { runner: ubuntu-latest, package: postgresql }
+          - { runner: macos-latest, package: postgresql }
     steps:
       - name: Checkout Nixpkgs
         uses: actions/checkout@v4
