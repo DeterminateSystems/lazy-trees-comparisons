@@ -63,11 +63,11 @@ jobs:
         run: |
           du -sh ./tmp
 
-      - name: Evaluate ${{ env.PKG }} with lazy trees
-        run: |
           # Remove temporary Nix store
           sudo rm -rf ./tmp
 
+      - name: Evaluate ${{ env.PKG }} with lazy trees
+        run: |
           # Turn on lazy trees
           sudo touch /etc/nix/nix.custom.conf
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
@@ -86,3 +86,6 @@ jobs:
       - name: Display disk usage with lazy trees
         run: |
           du -sh ./tmp
+
+          # Remove temporary Nix store
+          sudo rm -rf ./tmp
