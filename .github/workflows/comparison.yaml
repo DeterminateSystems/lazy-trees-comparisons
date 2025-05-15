@@ -40,12 +40,24 @@ jobs:
       - name: Install Determinate Nix
         uses: DeterminateSystems/determinate-nix-action@v3.5.2
 
+      - name: Install hyperfine
+        run: |
+          nix profile add \
+            "https://flakehub.com/f/NixOS/nixpkgs/0.2411.717921#hyperfine" \
+            "https://flakehub.com/f/NixOS/nixpkgs/0.2411.717921#jq"
+
       - name: Evaluate ${{ env.PKG }} without lazy trees
         run: |
-          time nix eval \
-            --quiet \
-            --store ./tmp \
-            .#${{ env.PKG }}
+          hyperfine \
+            --export-json lazy-trees-disabled.json \
+            --prepare 'echo "" >> flake.nix' \
+            --cleanup 'sudo rm -rf ./tmp' \
+            'nix eval --quiet --no-eval-cache --store ./tmp .#${{ env.PKG }}'
+
+          # Generate a ./tmp
+          nix eval --quiet --no-eval-cache --store ./tmp .#${{ env.PKG }}
+
+          cat lazy-trees-disabled.json | jq .
 
       - name: Display disk usage without lazy trees
         run: |
@@ -60,13 +72,16 @@ jobs:
           sudo touch /etc/nix/nix.custom.conf
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
 
-          # Meaningless change
-          echo "" >> flake.nix
+          hyperfine \
+            --export-json lazy-trees-enabled.json \
+            --prepare 'echo "" >> flake.nix' \
+            --cleanup 'sudo rm -rf ./tmp' \
+            'nix eval --quiet --no-eval-cache --store ./tmp .#${{ env.PKG }}'
 
-          time nix eval \
-            --quiet \
-            --store ./tmp \
-            .#${{ env.PKG }}
+          # Generate a ./tmp
+          nix eval --quiet --no-eval-cache --store ./tmp .#${{ env.PKG }}
+
+          cat lazy-trees-enabled.json | jq .
 
       - name: Display disk usage with lazy trees
         run: |
