@@ -18,16 +18,16 @@ jobs:
         examples:
           - { runner: ubuntu-latest, package: cowsay }
           - { runner: macos-latest, package: cowsay }
-          #- { runner: ubuntu-latest, package: apacheKafka }
-          #- { runner: macos-latest, package: apacheKafka }
-          #- { runner: ubuntu-latest, package: firefox }
-          #- { runner: macos-latest, package: firefox }
-          #- { runner: ubuntu-latest, package: stdenv }
-          #- { runner: macos-latest, package: stdenv }
-          #- { runner: ubuntu-latest, package: nodePackages }
-          #- { runner: macos-latest, package: nodePackages }
-          #- { runner: ubuntu-latest, package: perlPackages }
-          #- { runner: macos-latest, package: perlPackages }
+          - { runner: ubuntu-latest, package: apacheKafka }
+          - { runner: macos-latest, package: apacheKafka }
+          - { runner: ubuntu-latest, package: firefox }
+          - { runner: macos-latest, package: firefox }
+          - { runner: ubuntu-latest, package: stdenv }
+          - { runner: macos-latest, package: stdenv }
+          - { runner: ubuntu-latest, package: nodePackages }
+          - { runner: macos-latest, package: nodePackages }
+          - { runner: ubuntu-latest, package: perlPackages }
+          - { runner: macos-latest, package: perlPackages }
     steps:
       - name: Checkout Nixpkgs
         uses: actions/checkout@v4
