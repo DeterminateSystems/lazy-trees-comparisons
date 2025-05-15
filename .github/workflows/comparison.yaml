@@ -2,39 +2,72 @@ name: Lazy trees performance comparison
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches: [main]
 
 jobs:
   run-comparison:
-    runs-on: ${{ matrix.runners }}
+    runs-on: ${{ matrix.examples.runner }}
+    name: Evaluate the ${{ matrix.examples.package }} package on ${{ matrix.examples.runner }}
     permissions:
       id-token: write
       contents: read
+    env:
+      PKG: ${{ matrix.examples.package }}
     strategy:
       matrix:
-        runners:
-          - ubuntu-latest
-          - macos-latest
+        examples:
+          - { runner: ubuntu-latest, package: cowsay }
+          - { runner: macos-latest, package: cowsay }
+          - { runner: ubuntu-latest, package: apacheKafka }
+          - { runner: macos-latest, package: apacheKafka }
+          - { runner: ubuntu-latest, package: firefox }
+          - { runner: macos-latest, package: firefox }
+          - { runner: ubuntu-latest, package: stdenv }
+          - { runner: macos-latest, package: stdenv }
+          - { runner: ubuntu-latest, package: nodePackages }
+          - { runner: macos-latest, package: nodePackages }
+          - { runner: ubuntu-latest, package: perlPackages }
+          - { runner: macos-latest, package: perlPackages }
     steps:
-      - name: Fetch Nixpkgs
+      - name: Checkout Nixpkgs
         uses: actions/checkout@v4
         with:
           repository: NixOS/nixpkgs
           ref: 2f2c8b33a3dc4bf9a3db1648d734fa8c64f9166b
 
       - name: Install Determinate Nix
-        uses: DeterminateSystems/nix-installer-action@main
-        with:
-          determinate: true
+        uses: DeterminateSystems/determinate-nix-action@v3.5.2
 
-      - name: Evaluate cowsay without lazy trees
+      - name: Evaluate ${{ env.PKG }} without lazy trees
         run: |
-          time nix eval .#cowsay
+          time nix eval \
+            --quiet \
+            --store ./tmp \
+            .#${{ env.PKG }}
 
-      - name: Evaluate cowsay with lazy trees
+      - name: Display disk usage without lazy trees
         run: |
+          du -sh ./tmp
+
+      - name: Evaluate ${{ env.PKG }} with lazy trees
+        run: |
+          # Remove temporary Nix store
+          sudo rm -rf ./tmp
+
+          # Turn on lazy trees
           sudo touch /etc/nix/nix.custom.conf
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
 
-          time nix eval .#cowsay
+          # Meaningless change
+          echo "" >> flake.nix
+
+          time nix eval \
+            --quiet \
+            --store ./tmp \
+            .#${{ env.PKG }}
+
+      - name: Display disk usage with lazy trees
+        run: |
+          du -sh ./tmp
