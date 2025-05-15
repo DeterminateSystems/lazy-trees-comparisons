@@ -53,10 +53,10 @@ jobs:
             --export-json lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
             --cleanup 'sudo rm -rf ./tmp' \
-            'nix eval --quiet --no-substitute --no-eval-cache --store ./tmp .#${{ env.PKG }}'
+            'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ env.PKG }}'
 
           # Generate a ./tmp
-          nix eval --quiet --no-substitute --no-eval-cache --store ./tmp .#${{ env.PKG }}
+          nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ env.PKG }}
 
           cat lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json | jq .
 
@@ -64,7 +64,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
-          path: results/lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
+          path: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
       - name: Display disk usage without lazy trees
         run: |
@@ -94,7 +94,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
-          path: results/lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
+          path: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
       - name: Display disk usage with lazy trees
         run: |
@@ -116,6 +116,6 @@ jobs:
         with:
           path: results
 
-      - name: List artifacts
+      - name: List all uploaded artifacts
         run: |
-          ls ./results
+          find ./results
