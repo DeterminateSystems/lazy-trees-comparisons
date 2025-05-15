@@ -128,9 +128,15 @@ jobs:
           echo "|--------|---------|------------|---------------|---------|" >> "$GITHUB_STEP_SUMMARY"
 
           for f in ./results/*.json; do
-            runner=$(echo "$f" | sed -E 's|.*lazy-trees-(enabled|disabled)-([^-]+)-([^\.]+)\.json|\2|')
-            package=$(echo "$f" | sed -E 's|.*lazy-trees-(enabled|disabled)-([^-]+)-([^\.]+)\.json|\3|')
-            lazy=$(echo "$f" | grep -q 'enabled' && echo true || echo false)
+            runner=$(echo "$f" | sed -E 's#.*lazy-trees-(enabled|disabled)-([^-]+)-([^.]+)\.json#\2#')
+            package=$(echo "$f" | sed -E 's#.*lazy-trees-(enabled|disabled)-([^-]+)-([^.]+)\.json#\3#')
+
+            if echo "$f" | grep -q 'enabled'; then
+              lazy=true
+            else
+              lazy=false
+            fi
+
             mean=$(jq '.results[0].mean' "$f")
             stddev=$(jq '.results[0].stddev' "$f")
 
