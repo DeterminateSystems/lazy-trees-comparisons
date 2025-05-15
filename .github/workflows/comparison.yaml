@@ -40,6 +40,9 @@ jobs:
       - name: Install Determinate Nix
         uses: DeterminateSystems/determinate-nix-action@v3.5.2
 
+      - name: Set up FlakeHub Cache
+        uses: DeterminateSystems/flakehub-cache-action@main
+
       - name: Set up development environment
         run: |
           nix profile add .#hyperfine .#jq
