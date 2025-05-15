@@ -63,7 +63,8 @@ jobs:
       - name: Upload JSON results for lazy trees disabled
         uses: actions/upload-artifact@v4
         with:
-          name: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
+          if-no-files-found: error
+          name: results
           path: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
       - name: Display disk usage without lazy trees
@@ -93,7 +94,7 @@ jobs:
       - name: Upload JSON results for lazy trees enabled
         uses: actions/upload-artifact@v4
         with:
-          name: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
+          name: results
           path: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
       - name: Display disk usage with lazy trees
@@ -114,8 +115,21 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
+          name: results
           path: results
+          merge-multiple: true
 
-      - name: List all uploaded artifacts
+      - name: Display Markdown result
         run: |
-          find ./results
+          echo "| Runner | Package | Lazy Trees | Mean Time (s) | Std Dev |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|---------|------------|---------------|---------|" >> "$GITHUB_STEP_SUMMARY"
+
+          for f in ./results/*.json; do
+            runner=$(echo "$f" | sed -E 's|.*lazy-trees-(enabled|disabled)-([^-]+)-([^\.]+)\.json|\2|')
+            package=$(echo "$f" | sed -E 's|.*lazy-trees-(enabled|disabled)-([^-]+)-([^\.]+)\.json|\3|')
+            lazy=$(echo "$f" | grep -q 'enabled' && echo true || echo false)
+            mean=$(jq '.results[0].mean' "$f")
+            stddev=$(jq '.results[0].stddev' "$f")
+
+            echo "| $runner | $package | $lazy | $mean | $stddev |" >> "$GITHUB_STEP_SUMMARY"
+          done
