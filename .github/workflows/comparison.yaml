@@ -44,6 +44,7 @@ jobs:
         run: |
           time nix eval \
             --quiet \
+            --no-eval-cache \
             --store ./tmp \
             .#${{ env.PKG }}
 
@@ -65,6 +66,7 @@ jobs:
 
           time nix eval \
             --quiet \
+            --no-eval-cache \
             --store ./tmp \
             .#${{ env.PKG }}
 
