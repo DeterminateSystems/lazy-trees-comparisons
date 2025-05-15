@@ -124,21 +124,47 @@ jobs:
 
       - name: Display Markdown result
         run: |
-          echo "| Runner | Package | Lazy Trees | Mean Time (s) | Std Dev |" >> "$GITHUB_STEP_SUMMARY"
-          echo "|--------|---------|------------|---------------|---------|" >> "$GITHUB_STEP_SUMMARY"
+          declare -A mean_disabled mean_enabled std_disabled std_enabled
 
           for f in ./results/*.json; do
-            runner=$(echo "$f" | sed -E 's#.*lazy-trees-(enabled|disabled)-([^-]+)-([^.]+)\.json#\2#')
-            package=$(echo "$f" | sed -E 's#.*lazy-trees-(enabled|disabled)-([^-]+)-([^.]+)\.json#\3#')
+            filename=$(basename "$f")
 
-            if echo "$f" | grep -q 'enabled'; then
-              lazy=true
-            else
-              lazy=false
+            if [[ "$filename" =~ lazy-trees-(enabled|disabled)-([^-]+)-(.+)\.json ]]; then
+              mode="${BASH_REMATCH[1]}"        # enabled or disabled
+              runner="${BASH_REMATCH[2]}"      # ubuntu or macos
+              package="${BASH_REMATCH[3]}"     # cowsay, etc.
+              key="${runner}:${package}"
+
+              mean=$(jq '.results[0].mean' "$f")
+              stddev=$(jq '.results[0].stddev' "$f")
+
+              if [[ "$mode" == "enabled" ]]; then
+                mean_enabled["$key"]="$mean"
+                std_enabled["$key"]="$stddev"
+              else
+                mean_disabled["$key"]="$mean"
+                std_disabled["$key"]="$stddev"
+              fi
+            fi
+          done
+
+          echo "| Runner | Package | Disabled Mean (s) | Enabled Mean (s) | Δ Time (%) | Speedup |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|---------|-------------------|------------------|------------|---------|" >> "$GITHUB_STEP_SUMMARY"
+
+
+          for key in "${!mean_disabled[@]}"; do
+            runner="${key%%:*}"
+            package="${key##*:}"
+            d="${mean_disabled[$key]}"
+            e="${mean_enabled[$key]:-N/A}"  # fallback if no enabled
+            delta="N/A"
+            speedup="N/A"
+
+            if [[ "$e" != "N/A" ]]; then
+              delta=$(awk -v d="$d" -v e="$e" 'BEGIN { printf "%.1f", ((e - d) / d) * 100 }')
+              speedup=$(awk -v d="$d" -v e="$e" 'BEGIN { if (e > 0) printf "%.2fx", d / e; else print "∞" }')
             fi
 
-            mean=$(jq '.results[0].mean' "$f")
-            stddev=$(jq '.results[0].stddev' "$f")
-
-            echo "| $runner | $package | $lazy | $mean | $stddev |" >> "$GITHUB_STEP_SUMMARY"
+            printf "| %s | %s | %.2f | %.2f | %s%% | %s |\n" \
+              "$runner" "$package" "$d" "$e" "$delta" "$speedup" >> "$GITHUB_STEP_SUMMARY"
           done
