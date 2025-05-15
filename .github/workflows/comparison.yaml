@@ -8,15 +8,25 @@ on:
 
 jobs:
   run-comparison:
-    runs-on: ${{ matrix.runners }}
+    runs-on: ${{ matrix.examples.runner }}
     permissions:
       id-token: write
       contents: read
+    env:
+      PKG: ${{ matrix.examples.package }}
     strategy:
       matrix:
-        runners:
-          - ubuntu-latest
-          - macos-latest
+        examples:
+          - { runner: ubuntu-latest, package: cowsay }
+          - { runner: macos-latest, package: cowsay }
+          - { runner: ubuntu-latest, package: apacheKafka }
+          - { runner: macos-latest, package: apacheKafka }
+          - { runner: ubuntu-latest, package: firefox }
+          - { runner: macos-latest, package: firefox }
+          - { runner: ubuntu-latest, package: haskellPackages }
+          - { runner: macos-latest, package: haskellPackages }
+          - { runner: ubuntu-latest, package: pythonPackages }
+          - { runner: macos-latest, package: pythonPackages }
     steps:
       - name: Fetch Nixpkgs
         uses: actions/checkout@v4
@@ -29,13 +39,13 @@ jobs:
         with:
           determinate: true
 
-      - name: Evaluate cowsay without lazy trees
+      - name: Evaluate ${{ env.PKG }} without lazy trees
         run: |
-          time nix eval .#cowsay
+          time nix eval --quiet .#${{ env.PKG }}
 
-      - name: Evaluate cowsay with lazy trees
+      - name: Evaluate ${{ env.PKG }}  with lazy trees
         run: |
           sudo touch /etc/nix/nix.custom.conf
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
 
-          time nix eval .#cowsay
+          time nix eval --quiet .#${{ env.PKG }}
