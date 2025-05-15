@@ -24,10 +24,8 @@ jobs:
           - { runner: macos-latest, package: apacheKafka }
           - { runner: ubuntu-latest, package: firefox }
           - { runner: macos-latest, package: firefox }
-          - { runner: ubuntu-latest, package: haskellPackages }
-          - { runner: macos-latest, package: haskellPackages }
-          - { runner: ubuntu-latest, package: pythonPackages }
-          - { runner: macos-latest, package: pythonPackages }
+          - { runner: ubuntu-latest, package: stdenv }
+          - { runner: macos-latest, package: stdenv }
     steps:
       - name: Fetch Nixpkgs
         uses: actions/checkout@v4
@@ -42,10 +40,31 @@ jobs:
 
       - name: Evaluate ${{ env.PKG }} without lazy trees
         run: |
-          time nix eval --quiet .#${{ env.PKG }}
+          time nix eval \
+            --quiet \
+            --store ./tmp \
+            .#${{ env.PKG }}
+
+      - name: Make trivial change and evaluate ${{ env.PKG }} without lazy trees again
+        run: |
+          sudo rm -rf ./tmp
+
+          echo "" >> flake.nix
+
+          time nix eval \
+            --quiet \
+            --store ./tmp \
+            .#${{ env.PKG }}
+
+      - name: Display disk usage without lazy trees
+        run: |
+          du -sh ./tmp
 
       - name: Evaluate ${{ env.PKG }} with lazy trees
         run: |
+          # Remove temporary Nix store
+          sudo rm -rf ./tmp
+
           # Turn on lazy trees
           sudo touch /etc/nix/nix.custom.conf
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
@@ -53,4 +72,11 @@ jobs:
           # Meaningless change
           echo "" >> flake.nix
 
-          time nix eval --quiet .#${{ env.PKG }}
+          time nix eval \
+            --quiet \
+            --store ./tmp \
+            .#${{ env.PKG }}
+
+      - name: Display disk usage with lazy trees
+        run: |
+          du -sh ./tmp
