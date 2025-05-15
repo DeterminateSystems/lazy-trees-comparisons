@@ -2,6 +2,7 @@ name: Lazy trees performance comparison
 
 on:
   pull_request:
+  workflow_dispatch:
   push:
     branches: [main]
 

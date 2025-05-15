@@ -1,1 +1,2 @@
-# Lazy trees examples
+# Lazy trees example
+
