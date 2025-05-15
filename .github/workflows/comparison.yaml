@@ -44,9 +44,13 @@ jobs:
         run: |
           time nix eval --quiet .#${{ env.PKG }}
 
-      - name: Evaluate ${{ env.PKG }}  with lazy trees
+      - name: Evaluate ${{ env.PKG }} with lazy trees
         run: |
+          # Turn on lazy trees
           sudo touch /etc/nix/nix.custom.conf
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
+
+          # Meaningless change
+          echo "" >> flake.nix
 
           time nix eval --quiet .#${{ env.PKG }}
