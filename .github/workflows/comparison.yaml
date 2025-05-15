@@ -38,12 +38,40 @@ jobs:
         with:
           determinate: true
 
-      - name: Evaluate ${{ env.PKG }} without lazy trees
+      - name: Evaluate ${{ env.PKG }} with lazy trees
         run: |
+          # Turn on lazy trees
+          sudo touch /etc/nix/nix.custom.conf
+          echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
+
+          # Meaningless change
+          echo "" >> flake.nix
+
           time nix eval \
             --quiet \
             --store ./tmp \
             .#${{ env.PKG }}
+
+      - name: Display disk usage with lazy trees
+        run: |
+          du -sh ./tmp
+
+      - name: Evaluate ${{ env.PKG }} without lazy trees
+        run: |
+          # Disable lazy trees
+          echo "lazy-trees = false" | sudo tee -a /etc/nix/nix.custom.conf
+
+          # Meaningless change
+          echo "" >> flake.nix
+
+          time nix eval \
+            --quiet \
+            --store ./tmp \
+            .#${{ env.PKG }}
+
+      - name: Display disk usage without lazy trees
+        run: |
+          du -sh ./tmp
 
       - name: Make trivial change and evaluate ${{ env.PKG }} without lazy trees again
         run: |
