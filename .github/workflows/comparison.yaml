@@ -13,8 +13,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    env:
-      PKG: ${{ matrix.examples.package }}
     strategy:
       matrix:
         examples:
@@ -47,62 +45,43 @@ jobs:
         run: |
           nix profile add .#hyperfine .#jq
 
-      - name: Evaluate ${{ env.PKG }} without lazy trees
+      - name: Evaluate ${{ matrix.examples.package }} without lazy trees
         run: |
           hyperfine \
             --export-json lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
             --cleanup 'sudo rm -rf ./tmp' \
-            'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ env.PKG }}'
+            'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}'
 
-          # Generate a ./tmp
-          nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ env.PKG }}
+          nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}
 
-          cat lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json | jq .
-
-      - name: Upload JSON results for lazy trees disabled
+      - name: Upload results (lazy trees disabled)
         uses: actions/upload-artifact@v4
         with:
-          if-no-files-found: error
           name: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
           path: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
-      - name: Display disk usage without lazy trees
-        run: |
-          du -sh ./tmp
+      - run: sudo rm -rf ./tmp
 
-          # Remove temporary Nix store
-          sudo rm -rf ./tmp
-
-      - name: Evaluate ${{ env.PKG }} with lazy trees
+      - name: Evaluate ${{ matrix.examples.package }} with lazy trees
         run: |
-          # Turn on lazy trees
-          sudo touch /etc/nix/nix.custom.conf
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
 
           hyperfine \
             --export-json lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
             --cleanup 'sudo rm -rf ./tmp' \
-            'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ env.PKG }}'
+            'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}'
 
-          # Generate a ./tmp
-          nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ env.PKG }}
+          nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}
 
-          cat lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json | jq .
-
-      - name: Upload JSON results for lazy trees enabled
+      - name: Upload results (lazy trees enabled)
         uses: actions/upload-artifact@v4
         with:
           name: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
           path: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
-      - name: Display disk usage with lazy trees
-        run: |
-          du -sh ./tmp
-
-          # Remove temporary Nix store
-          sudo rm -rf ./tmp
+      - run: sudo rm -rf ./tmp
 
   collect-results:
     needs: run-comparisons
@@ -118,32 +97,25 @@ jobs:
           path: results
           merge-multiple: true
 
-      - name: List all downloaded JSON files
-        run: |
-          find ./results -type f
-
       - name: Display Markdown result
         run: |
-          declare -A mean_disabled mean_enabled std_disabled std_enabled
+          declare -A mean_disabled mean_enabled
 
           for f in ./results/*.json; do
             filename=$(basename "$f")
 
-            if [[ "$filename" =~ lazy-trees-(enabled|disabled)-([^-]+)-(.+)\.json ]]; then
-              mode="${BASH_REMATCH[1]}"        # enabled or disabled
-              runner="${BASH_REMATCH[2]}"      # ubuntu or macos
-              package="${BASH_REMATCH[3]}"     # cowsay, etc.
+            if [[ "$filename" =~ lazy-trees-(enabled|disabled)-([^-]+-[^-]+)-(.+)\.json ]]; then
+              mode="${BASH_REMATCH[1]}"         # enabled or disabled
+              runner="${BASH_REMATCH[2]}"       # e.g. ubuntu-latest
+              package="${BASH_REMATCH[3]}"      # e.g. cowsay
               key="${runner}:${package}"
 
               mean=$(jq '.results[0].mean' "$f")
-              stddev=$(jq '.results[0].stddev' "$f")
 
               if [[ "$mode" == "enabled" ]]; then
                 mean_enabled["$key"]="$mean"
-                std_enabled["$key"]="$stddev"
               else
                 mean_disabled["$key"]="$mean"
-                std_disabled["$key"]="$stddev"
               fi
             fi
           done
@@ -151,12 +123,11 @@ jobs:
           echo "| Runner | Package | Disabled Mean (s) | Enabled Mean (s) | Δ Time (%) | Speedup |" >> "$GITHUB_STEP_SUMMARY"
           echo "|--------|---------|-------------------|------------------|------------|---------|" >> "$GITHUB_STEP_SUMMARY"
 
-
           for key in "${!mean_disabled[@]}"; do
             runner="${key%%:*}"
             package="${key##*:}"
             d="${mean_disabled[$key]}"
-            e="${mean_enabled[$key]:-N/A}"  # fallback if no enabled
+            e="${mean_enabled[$key]:-N/A}"
             delta="N/A"
             speedup="N/A"
 
