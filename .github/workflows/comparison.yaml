@@ -42,7 +42,7 @@ jobs:
 
       - name: Set up development environment
         run: |
-          nix shell .#hyperfine .#jq
+          nix profile add .#hyperfine .#jq
 
       - name: Evaluate ${{ env.PKG }} without lazy trees
         run: |
