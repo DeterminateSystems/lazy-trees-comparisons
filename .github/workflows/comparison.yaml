@@ -50,18 +50,14 @@ jobs:
           hyperfine \
             --export-json lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
-            --cleanup 'sudo rm -rf ./tmp' \
+            --cleanup 'sudo rm -rf ./tmp; git restore .' \
             'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}'
-
-          nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}
 
       - name: Upload results (lazy trees disabled)
         uses: actions/upload-artifact@v4
         with:
           name: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
           path: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
-
-      - run: sudo rm -rf ./tmp
 
       - name: Evaluate ${{ matrix.examples.package }} with lazy trees
         run: |
@@ -70,18 +66,14 @@ jobs:
           hyperfine \
             --export-json lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
-            --cleanup 'sudo rm -rf ./tmp' \
+            --cleanup 'sudo rm -rf ./tmp; git restore .' \
             'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}'
-
-          nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}
 
       - name: Upload results (lazy trees enabled)
         uses: actions/upload-artifact@v4
         with:
           name: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
           path: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
-
-      - run: sudo rm -rf ./tmp
 
   collect-results:
     needs: run-comparisons
