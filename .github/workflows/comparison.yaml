@@ -7,14 +7,12 @@ on:
     branches: [main]
 
 jobs:
-  run-comparison:
+  run-comparisons:
     runs-on: ${{ matrix.examples.runner }}
     name: Evaluate the ${{ matrix.examples.package }} package on ${{ matrix.examples.runner }}
     permissions:
       id-token: write
       contents: read
-    env:
-      PKG: ${{ matrix.examples.package }}
     strategy:
       matrix:
         examples:
@@ -28,8 +26,8 @@ jobs:
           - { runner: macos-latest, package: stdenv }
           - { runner: ubuntu-latest, package: nodePackages }
           - { runner: macos-latest, package: nodePackages }
-          - { runner: ubuntu-latest, package: perlPackages }
-          - { runner: macos-latest, package: perlPackages }
+          - { runner: ubuntu-latest, package: postgresql }
+          - { runner: macos-latest, package: postgresql }
     steps:
       - name: Checkout Nixpkgs
         uses: actions/checkout@v4
@@ -40,36 +38,96 @@ jobs:
       - name: Install Determinate Nix
         uses: DeterminateSystems/determinate-nix-action@v3.5.2
 
-      - name: Evaluate ${{ env.PKG }} without lazy trees
-        run: |
-          time nix eval \
-            --quiet \
-            --no-eval-cache \
-            --store ./tmp \
-            .#${{ env.PKG }}
+      - name: Set up FlakeHub Cache
+        uses: DeterminateSystems/flakehub-cache-action@main
 
-      - name: Display disk usage without lazy trees
+      - name: Set up development environment
         run: |
-          du -sh ./tmp
+          nix profile add .#hyperfine .#jq
 
-      - name: Evaluate ${{ env.PKG }} with lazy trees
+      - name: Evaluate ${{ matrix.examples.package }} without lazy trees
         run: |
-          # Remove temporary Nix store
-          sudo rm -rf ./tmp
+          hyperfine \
+            --export-json lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
+            --prepare 'echo "" >> flake.nix' \
+            --cleanup 'sudo rm -rf ./tmp; git restore .' \
+            'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}'
 
-          # Turn on lazy trees
-          sudo touch /etc/nix/nix.custom.conf
+      - name: Upload results (lazy trees disabled)
+        uses: actions/upload-artifact@v4
+        with:
+          name: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
+          path: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
+
+      - name: Evaluate ${{ matrix.examples.package }} with lazy trees
+        run: |
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
 
-          # Meaningless change
-          echo "" >> flake.nix
+          hyperfine \
+            --export-json lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
+            --prepare 'echo "" >> flake.nix' \
+            --cleanup 'sudo rm -rf ./tmp; git restore .' \
+            'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}'
 
-          time nix eval \
-            --quiet \
-            --no-eval-cache \
-            --store ./tmp \
-            .#${{ env.PKG }}
+      - name: Upload results (lazy trees enabled)
+        uses: actions/upload-artifact@v4
+        with:
+          name: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
+          path: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
-      - name: Display disk usage with lazy trees
+  collect-results:
+    needs: run-comparisons
+    runs-on: ubuntu-latest
+    name: Display comparison results
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: results
+          merge-multiple: true
+
+      - name: Display Markdown result
         run: |
-          du -sh ./tmp
+          declare -A mean_disabled mean_enabled
+
+          for f in ./results/*.json; do
+            filename=$(basename "$f")
+
+            if [[ "$filename" =~ lazy-trees-(enabled|disabled)-([^-]+-[^-]+)-(.+)\.json ]]; then
+              mode="${BASH_REMATCH[1]}"         # enabled or disabled
+              runner="${BASH_REMATCH[2]}"       # e.g. ubuntu-latest
+              package="${BASH_REMATCH[3]}"      # e.g. cowsay
+              key="${runner}:${package}"
+
+              mean=$(jq '.results[0].mean' "$f")
+
+              if [[ "$mode" == "enabled" ]]; then
+                mean_enabled["$key"]="$mean"
+              else
+                mean_disabled["$key"]="$mean"
+              fi
+            fi
+          done
+
+          echo "| Runner | Package | Disabled Mean (s) | Enabled Mean (s) | Δ Time (%) | Speedup |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|--------|---------|-------------------|------------------|------------|---------|" >> "$GITHUB_STEP_SUMMARY"
+
+          for key in "${!mean_disabled[@]}"; do
+            runner="${key%%:*}"
+            package="${key##*:}"
+            d="${mean_disabled[$key]}"
+            e="${mean_enabled[$key]:-N/A}"
+            delta="N/A"
+            speedup="N/A"
+
+            if [[ "$e" != "N/A" ]]; then
+              delta=$(awk -v d="$d" -v e="$e" 'BEGIN { printf "%.1f", ((e - d) / d) * 100 }')
+              speedup=$(awk -v d="$d" -v e="$e" 'BEGIN { if (e > 0) printf "%.2fx", d / e; else print "∞" }')
+            fi
+
+            printf "| %s | %s | %.2f | %.2f | %s%% | %s |\n" \
+              "$runner" "$package" "$d" "$e" "$delta" "$speedup" >> "$GITHUB_STEP_SUMMARY"
+          done
