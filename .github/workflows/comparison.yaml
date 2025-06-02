@@ -20,8 +20,12 @@ jobs:
           - { runner: ubuntu-24.04, package: chromium }
           - { runner: ubuntu-24.04, package: cowsay }
           - { runner: ubuntu-24.04, package: firefox }
-          - { runner: ubuntu-24.04, package: haskellPackages }
+          - { runner: ubuntu-24.04, package: git }
           - { runner: ubuntu-24.04, package: hello }
+          - { runner: ubuntu-24.04, package: jq }
+          - { runner: ubuntu-24.04, package: lib }
+          - { runner: ubuntu-24.04, package: linuxPackages }
+          - { runner: ubuntu-24.04, package: llvm }
           - { runner: ubuntu-24.04, package: nodePackages }
           - { runner: ubuntu-24.04, package: openjdk }
           - { runner: ubuntu-24.04, package: opentofu }
