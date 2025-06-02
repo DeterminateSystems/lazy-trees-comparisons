@@ -16,19 +16,22 @@ jobs:
     strategy:
       matrix:
         examples:
-          - { runner: ubuntu-latest, package: cowsay }
-          - { runner: macos-latest, package: cowsay }
-          - { runner: ubuntu-latest, package: apacheKafka }
-          - { runner: macos-latest, package: apacheKafka }
-          - { runner: ubuntu-latest, package: firefox }
-          - { runner: macos-latest, package: firefox }
-          - { runner: ubuntu-latest, package: stdenv }
-          - { runner: macos-latest, package: stdenv }
-          - { runner: ubuntu-latest, package: nodePackages }
-          - { runner: macos-latest, package: nodePackages }
-          - { runner: ubuntu-latest, package: postgresql }
-          - { runner: macos-latest, package: postgresql }
+          - { runner: ubuntu-24.04, package: apacheKafka }
+          - { runner: ubuntu-24.04, package: chromium }
+          - { runner: ubuntu-24.04, package: cowsay }
+          - { runner: ubuntu-24.04, package: firefox }
+          - { runner: ubuntu-24.04, package: haskellPackages }
+          - { runner: ubuntu-24.04, package: hello }
+          - { runner: ubuntu-24.04, package: nodePackages }
+          - { runner: ubuntu-24.04, package: openjdk }
+          - { runner: ubuntu-24.04, package: opentofu }
+          - { runner: ubuntu-24.04, package: ponysay }
+          - { runner: ubuntu-24.04, package: postgresql }
+          - { runner: ubuntu-24.04, package: rustPackages }
+          - { runner: ubuntu-24.04, package: stdenv }
+          - { runner: ubuntu-24.04, package: swift }
     steps:
+      # https://github.com/NixOS/nixpkgs/tree/2f2c8b33a3dc4bf9a3db1648d734fa8c64f9166b
       - name: Checkout Nixpkgs
         uses: actions/checkout@v4
         with:
@@ -36,7 +39,7 @@ jobs:
           ref: 2f2c8b33a3dc4bf9a3db1648d734fa8c64f9166b
 
       - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3.5.2
+        uses: DeterminateSystems/determinate-nix-action@v3.6.1
 
       - name: Set up FlakeHub Cache
         uses: DeterminateSystems/flakehub-cache-action@main
@@ -46,34 +49,42 @@ jobs:
           nix profile add .#hyperfine .#jq
 
       - name: Evaluate ${{ matrix.examples.package }} without lazy trees
+        env:
+          PREFIX: lazy-trees-disabled
         run: |
           hyperfine \
-            --export-json lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
+            --export-json ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
             --cleanup 'sudo rm -rf ./tmp; git restore .' \
             'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}'
 
       - name: Upload results (lazy trees disabled)
         uses: actions/upload-artifact@v4
+        env:
+          PREFIX: lazy-trees-disabled
         with:
-          name: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
-          path: lazy-trees-disabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
+          name: ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
+          path: ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
       - name: Evaluate ${{ matrix.examples.package }} with lazy trees
+        env:
+          PREFIX: lazy-trees-enabled
         run: |
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
 
           hyperfine \
-            --export-json lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
+            --export-json ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
             --cleanup 'sudo rm -rf ./tmp; git restore .' \
             'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}'
 
       - name: Upload results (lazy trees enabled)
         uses: actions/upload-artifact@v4
+        env:
+          PREFIX: lazy-trees-enabled
         with:
-          name: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
-          path: lazy-trees-enabled-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
+          name: ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
+          path: ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
 
   collect-results:
     needs: run-comparisons
