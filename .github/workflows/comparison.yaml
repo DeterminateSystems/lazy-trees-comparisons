@@ -43,7 +43,7 @@ jobs:
           ref: 2f2c8b33a3dc4bf9a3db1648d734fa8c64f9166b
 
       - name: Install Determinate Nix
-        uses: DeterminateSystems/determinate-nix-action@v3.6.1
+        uses: DeterminateSystems/determinate-nix-action@v3.6.5
 
       - name: Set up FlakeHub Cache
         uses: DeterminateSystems/flakehub-cache-action@main
