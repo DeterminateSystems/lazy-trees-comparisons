@@ -1,0 +1,22 @@
+name: Lazy trees performance comparison
+
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  run-comparisons-on-each-system:
+    uses: ./.github/workflows/comparison.yaml
+    name: Compare on ${{ matrix.examples.runner }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      matrix:
+        examples:
+          - { runner: ubuntu-24.04 }
+          - { runner: macos-latest-xlarge }
+    with:
+      runner: ${{ matrix.examples.runner }}

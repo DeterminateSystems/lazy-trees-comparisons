@@ -1,39 +1,40 @@
 name: Lazy trees performance comparison
 
 on:
-  pull_request:
-  workflow_dispatch:
-  push:
-    branches: [main]
+  workflow_call:
+    inputs:
+      runner:
+        required: true
+        type: string
 
 jobs:
   run-comparisons:
-    runs-on: ${{ matrix.examples.runner }}
-    name: Evaluate the ${{ matrix.examples.package }} package on ${{ matrix.examples.runner }}
+    runs-on: ${{ inputs.runner }}
+    name: Evaluate the ${{ matrix.examples.package }} package on ${{ inputs.runner }}
     permissions:
       id-token: write
       contents: read
     strategy:
       matrix:
         examples:
-          - { runner: ubuntu-24.04, package: apacheKafka }
-          - { runner: ubuntu-24.04, package: chromium }
-          - { runner: ubuntu-24.04, package: cowsay }
-          - { runner: ubuntu-24.04, package: firefox }
-          - { runner: ubuntu-24.04, package: git }
-          - { runner: ubuntu-24.04, package: hello }
-          - { runner: ubuntu-24.04, package: jq }
-          - { runner: ubuntu-24.04, package: lib }
-          - { runner: ubuntu-24.04, package: linuxPackages }
-          - { runner: ubuntu-24.04, package: llvm }
-          - { runner: ubuntu-24.04, package: nodePackages }
-          - { runner: ubuntu-24.04, package: openjdk }
-          - { runner: ubuntu-24.04, package: opentofu }
-          - { runner: ubuntu-24.04, package: ponysay }
-          - { runner: ubuntu-24.04, package: postgresql }
-          - { runner: ubuntu-24.04, package: rustPackages }
-          - { runner: ubuntu-24.04, package: stdenv }
-          - { runner: ubuntu-24.04, package: swift }
+          - { package: apacheKafka }
+          - { package: chromium }
+          - { package: cowsay }
+          - { package: firefox }
+          - { package: git }
+          - { package: hello }
+          - { package: jq }
+          - { package: lib }
+          - { package: linuxPackages }
+          - { package: llvm }
+          - { package: nodePackages }
+          - { package: openjdk }
+          - { package: opentofu }
+          - { package: ponysay }
+          - { package: postgresql }
+          - { package: rustPackages }
+          - { package: stdenv }
+          - { package: swift }
     steps:
       # https://github.com/NixOS/nixpkgs/tree/2f2c8b33a3dc4bf9a3db1648d734fa8c64f9166b
       - name: Checkout Nixpkgs
@@ -57,7 +58,7 @@ jobs:
           PREFIX: lazy-trees-disabled
         run: |
           hyperfine \
-            --export-json ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
+            --export-json ${{ env.PREFIX }}-${{ inputs.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
             --cleanup 'sudo rm -rf ./tmp; git restore .' \
             'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}'
@@ -67,8 +68,8 @@ jobs:
         env:
           PREFIX: lazy-trees-disabled
         with:
-          name: ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
-          path: ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
+          name: ${{ env.PREFIX }}-${{ inputs.runner }}-${{ matrix.examples.package }}
+          path: ${{ env.PREFIX }}-${{ inputs.runner }}-${{ matrix.examples.package }}.json
 
       - name: Evaluate ${{ matrix.examples.package }} with lazy trees
         env:
@@ -77,7 +78,7 @@ jobs:
           echo "lazy-trees = true" | sudo tee -a /etc/nix/nix.custom.conf
 
           hyperfine \
-            --export-json ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json \
+            --export-json ${{ env.PREFIX }}-${{ inputs.runner }}-${{ matrix.examples.package }}.json \
             --prepare 'echo "" >> flake.nix' \
             --cleanup 'sudo rm -rf ./tmp; git restore .' \
             'nix eval --quiet --offline --no-substitute --no-eval-cache --store ./tmp .#${{ matrix.examples.package }}'
@@ -87,8 +88,8 @@ jobs:
         env:
           PREFIX: lazy-trees-enabled
         with:
-          name: ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}
-          path: ${{ env.PREFIX }}-${{ matrix.examples.runner }}-${{ matrix.examples.package }}.json
+          name: ${{ env.PREFIX }}-${{ inputs.runner }}-${{ matrix.examples.package }}
+          path: ${{ env.PREFIX }}-${{ inputs.runner }}-${{ matrix.examples.package }}.json
 
   collect-results:
     needs: run-comparisons
